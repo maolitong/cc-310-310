@@ -1,0 +1,16 @@
+{
+  "name": "park-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "游乐园腕带核验 API",
+  "scripts": {
+    "start": "node src/server.js",
+    "migrate": "node src/migrate.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "ioredis": "^5.4.2",
+    "pg": "^8.13.1"
+  }
+}

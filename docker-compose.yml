@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: park
+      POSTGRES_PASSWORD: park
+      POSTGRES_DB: park
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U park -d park"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./api
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://park:park@postgres:5432/park
+      REDIS_URL: redis://redis:6379/0
+      SEED_DEMO: "1"
+      TZ: UTC
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  web:
+    build: ./web
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  gate-fixture:
+    build: ./gate-fixture
+    environment:
+      API_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+
+  test:
+    build: ./api
+    profiles: ["test"]
+    environment:
+      DATABASE_URL: postgres://park:park@postgres:5432/park_test
+      REDIS_URL: redis://redis:6379/1
+      SEED_DEMO: "0"
+      TZ: UTC
+    command: npm test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
